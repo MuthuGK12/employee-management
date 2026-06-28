@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: ems-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_DATABASE: employee_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ems-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ems-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      SPRING_PROFILES_ACTIVE: default
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - ems-network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  ems-network:
+    driver: bridge
